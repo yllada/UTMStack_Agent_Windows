@@ -23,12 +23,10 @@ const (
 )
 
 var (
-	modwevtapi            = windows.NewLazySystemDLL("wevtapi.dll")
-	procEvtSubscribe      = modwevtapi.NewProc("EvtSubscribe")
-	procEvtRender         = modwevtapi.NewProc("EvtRender")
-	procEvtClose          = modwevtapi.NewProc("EvtClose")
-	procEvtCreateBookmark = modwevtapi.NewProc("EvtCreateBookmark")
-	procEvtUpdateBookmark = modwevtapi.NewProc("EvtUpdateBookmark")
+	modwevtapi       = windows.NewLazySystemDLL("wevtapi.dll")
+	procEvtSubscribe = modwevtapi.NewProc("EvtSubscribe")
+	procEvtRender    = modwevtapi.NewProc("EvtRender")
+	procEvtClose     = modwevtapi.NewProc("EvtClose")
 )
 
 type Event struct {
@@ -98,7 +96,7 @@ type EventJSON struct {
 	EventData     map[string]interface{} `json:"data"`
 }
 
-type EventCallback func(event *Event, channel string)
+type EventCallback func(event *Event)
 
 type EventSubscription struct {
 	Channel         string
@@ -195,7 +193,7 @@ func (evtSub *EventSubscription) winAPICallback(action, userContext, event uintp
 			if err := xml.Unmarshal([]byte(xmlStr), dataParsed); err != nil {
 				evtSub.Errors <- fmt.Errorf("windows_events: failed to parse XML: %s", err)
 			} else {
-				evtSub.Callback(dataParsed, evtSub.Channel)
+				evtSub.Callback(dataParsed)
 			}
 			break
 		}
@@ -238,8 +236,8 @@ func main() {
 			Channel: channel,
 			Query:   "*",
 			Errors:  errorsChan,
-			Callback: func(e *Event, ch string) {
-				eventCallback(e, ch)
+			Callback: func(e *Event) {
+				eventCallback(e)
 			},
 		}
 
@@ -268,7 +266,7 @@ func main() {
 	log.Println("Agent finished successfully.")
 }
 
-func eventCallback(event *Event, channel string) {
+func eventCallback(event *Event) {
 	eventJSON := EventJSON{
 		ProviderName:  event.System.Provider.ProviderName,
 		ProviderGUID:  event.System.Provider.ProviderGUID,
